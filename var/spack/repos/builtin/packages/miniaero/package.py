@@ -13,22 +13,52 @@ class Miniaero(MakefilePackage):
     """
 
     homepage = "http://mantevo.org"
-    git      = "https://github.com/Mantevo/miniAero.git"
+    git      = "https://github.com/ghe-asu/miniAero.git"
 
     tags = ['proxy-app']
 
+    version('v1.0.1', commit='7744fa59cd93f6b0cc689f080314de8ff401d2a9')
     version('2016-11-11', commit='f46d135479a5be19ec5d146ccaf0e581aeff4596')
 
-    depends_on('kokkos-legacy')
+    variant(
+        'mpi', default=False, description='Builds an MPI version'
+    )
+
+    depends_on('kokkos')
+    depends_on('mpi', when='+mpi')
 
     @property
     def build_targets(self):
-        targets = [
-            '--directory=kokkos',
-            'CXX=c++',
-            'KOKKOS_PATH={0}'.format(
-                self.spec['kokkos-legacy'].prefix)
-        ]
+
+        if '+mpi' in self.spec:
+            targets = [
+                '--directory=kokkos',
+                '--file=Makefile.mpi',
+                'CXX=mpicxx',
+                'KOKKOS_PATH={0}'.format(
+                    self.spec['kokkos'].prefix),
+                'KOKKOS_CPPFLAGS=-I{0}'.format(
+                    self.spec['kokkos'].prefix.include
+                ),
+                'KOKKOS_LDFLAGS=-L{}'.format(
+                    self.spec['kokkos'].prefix.lib64
+                ),
+                'KOKKOS_LIBS=-lkokkoscore'
+            ]
+        else:
+            targets = [
+                '--directory=kokkos',
+                'CXX=c++',
+                'KOKKOS_PATH={0}'.format(
+                    self.spec['kokkos'].prefix),
+                'KOKKOS_CPPFLAGS=-I{0}'.format(
+                    self.spec['kokkos'].prefix.include
+                ),
+                'KOKKOS_LDFLAGS=-L{}'.format(
+                    self.spec['kokkos'].prefix.lib64
+                ),
+                'KOKKOS_LIBS=-lkokkoscore'
+            ]
 
         return targets
 
@@ -37,7 +67,10 @@ class Miniaero(MakefilePackage):
         mkdirp(prefix.bin)
         mkdirp(prefix.doc)
 
-        install('kokkos/miniAero.host', prefix.bin)
+        if '+mpi' in self.spec:
+            install('kokkos/miniAero.mpi', prefix.bin)
+        else:
+            install('kokkos/miniAero.host', prefix.bin)
         install('kokkos/README', prefix.doc)
         install('kokkos/tests/3D_Sod_Serial/miniaero.inp', prefix.bin)
         install_tree('kokkos/tests', prefix.doc.tests)
